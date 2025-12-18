@@ -1,0 +1,197 @@
+You are a senior full-stack engineer.
+
+We are building a real-time Mafia (Werewolf) game web application.
+The goal is a correct, minimal MVP with clean architecture and reconnect support.
+
+====================
+TECH STACK
+====================
+
+Frontend:
+- React 18
+- TypeScript
+- Vite
+- Emotion (@emotion/react, @emotion/styled)
+- Centralized ThemeProvider
+- Redux Toolkit (@reduxjs/toolkit) + react-redux
+- Axios for REST APIs
+- STOMP over WebSocket (@stomp/stompjs, sockjs-client)
+
+Backend:
+- Java 17+
+- Spring Boot 3
+- Spring Web
+- Spring WebSocket with STOMP
+- Spring Security (very lightweight, token-based)
+- NO database
+- NO Redis
+- All state stored in memory (Maps)
+
+====================
+ARCHITECTURE RULES
+====================
+
+- REST APIs are used ONLY for:
+  - Creating a lobby
+  - Joining a lobby
+  - Fetching non-sensitive lobby info
+
+- WebSockets (STOMP) are used for ALL real-time gameplay:
+  - Role assignment
+  - Day/Night phase changes
+  - God announcements
+  - Private player messages
+
+- NEVER expose player roles via REST APIs.
+
+- Backend runs as a SINGLE INSTANCE.
+- Server restart resets all games (acceptable for MVP).
+
+====================
+CORE DOMAIN CONCEPTS
+====================
+
+Lobby:
+- Random UUID lobbyId
+- Owner = God / Storyteller
+- Players join via shared link
+- No login system
+
+Player Identity:
+- Server generates a playerToken (UUID)
+- Token is stored client-side (cookie or localStorage)
+- Token is sent with every REST and WebSocket request
+
+Roles:
+- God configures role counts
+- Roles can be assigned randomly OR manually by God
+- Each player sees ONLY their own role
+
+Game Flow:
+- WAITING → ROLES_ASSIGNED → NIGHT → DAY → FINISHED
+- God controls phase transitions
+
+Messaging Channels (STOMP):
+- Lobby broadcast → /topic/lobby/{lobbyId}
+- Player private → /queue/player/{playerId}
+- God private → /queue/god/{lobbyId}
+
+====================
+RECONNECT SUPPORT (REQUIRED)
+====================
+
+Players must be able to refresh the page or reconnect
+WITHOUT losing their game state.
+
+Reconnect behavior:
+- Client sends playerToken on WebSocket CONNECT
+- Server validates token and re-associates session
+- Server re-sends to reconnecting player:
+  - Current game phase
+  - Player’s role
+  - Any relevant current game state
+
+Reconnect works as long as backend process is alive.
+
+In-memory storage:
+- token → playerId mapping
+- lobbyId → Lobby
+- lobbyId → GameState
+
+Add TODO comments where persistence could be added later.
+
+====================
+FRONTEND REQUIREMENTS
+====================
+
+- NO Tailwind CSS
+- Use Emotion styled components only
+- Create reusable components in `components/common`:
+  - Button
+  - Card
+  - Input
+  - Modal
+  - Text
+
+Theme:
+- Centralized colors, spacing, typography
+- ThemeProvider wrapping the app
+
+Redux Store Structure:
+- lobbySlice (lobbyId, players, ownerId)
+- playerSlice (playerId, playerToken, role)
+- gameSlice (phase, dayCount, announcements)
+- websocketSlice (connected, error)
+
+Screens:
+- Home (Create / Join Lobby)
+- Lobby Waiting Room
+- Player Game Screen
+- God Dashboard
+
+WebSocket:
+- Single connection per lobby
+- Connection lifecycle handled in Redux
+- Subscribe only to authorized destinations
+- Incoming messages update Redux state
+
+====================
+BACKEND REQUIREMENTS
+====================
+
+- Spring Boot WebSocket with STOMP
+- WebSocket endpoint: /ws
+- STOMP broker with /topic and /queue
+- SimpMessagingTemplate for message routing
+
+Security:
+- Token-based identification (playerToken)
+- WebSocket interceptor:
+  - Validate token on CONNECT
+  - Associate session with playerId
+  - Restrict subscriptions to authorized destinations
+
+In-memory domain storage:
+- Map<UUID, Lobby>
+- Map<UUID, GameState>
+- Map<String, PlayerSession>
+
+====================
+IMPLEMENTATION ORDER
+====================
+
+1. Scaffold backend:
+   - Spring Boot project
+   - WebSocketConfig
+   - Token validation interceptor
+   - In-memory stores
+   - Lobby REST controller
+
+2. Scaffold frontend:
+   - Theme + GlobalStyles
+   - Redux store and slices
+   - Routing structure
+   - WebSocket client setup
+
+3. Implement minimal working flow:
+   - Create lobby
+   - Join lobby
+   - God assigns roles
+   - Player receives role via WebSocket
+   - Player refreshes page and reconnects successfully
+
+4. Keep code simple, typed, and well-commented
+5. Add TODOs for future features (voting, night actions)
+6. Do NOT over-engineer UI or authentication
+
+====================
+OUTPUT EXPECTATION
+====================
+
+- Clear folder structure
+- Minimal but correct implementations
+- Typed message payloads
+- Clean separation of concerns
+- Comments explaining important decisions
+
+Start by scaffolding the BACKEND first.
