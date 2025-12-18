@@ -12,7 +12,7 @@ export default defineConfig({
     }),
   ],
   server: {
-    port: 3000,
+    port: 5000,
     proxy: {
       "/api": {
         target: "http://localhost:8080",
@@ -24,5 +24,8 @@ export default defineConfig({
         ws: true,
       },
     },
+  },
+  define: {
+    global: "globalThis",
   },
 });

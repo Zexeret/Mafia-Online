@@ -23,6 +23,16 @@ public class LobbyController {
     
     @Autowired
     private LobbyService lobbyService;
+
+    /**
+     * Health check endpoint.
+     */
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("Sab Badhiya ji!");
+    }
+
+
     
     /**
      * Create a new lobby.
