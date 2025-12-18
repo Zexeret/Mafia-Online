@@ -105,8 +105,9 @@ public class LobbyService {
     
     /**
      * Broadcast updated player list to all players in a lobby.
+     * Made public so GameService can call it on reconnect.
      */
-    private void broadcastPlayerListUpdate(UUID lobbyId) {
+    public void broadcastPlayerListUpdate(UUID lobbyId) {
         Lobby lobby = store.getLobby(lobbyId);
         if (lobby == null) return;
         

@@ -145,6 +145,10 @@ public class GameService {
             lobbyService.reconnectPlayer(lobbyId, playerId, session.getPlayerName());
             lobby = store.getLobby(lobbyId); // Refresh lobby
             player = lobby.getPlayerById(playerId);
+        } else if (player != null) {
+            // Player already in lobby (e.g., God), still broadcast to notify others
+            System.out.println("Player " + playerId + " (" + session.getPlayerName() + ") already in lobby, broadcasting presence");
+            lobbyService.broadcastPlayerListUpdate(lobbyId);
         }
         
         if (player == null) {
