@@ -7,8 +7,10 @@ import com.mafia.model.Player;
 import com.mafia.model.PlayerSession;
 import com.mafia.store.InMemoryStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -19,6 +21,9 @@ public class LobbyService {
     
     @Autowired
     private InMemoryStore store;
+    
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
     
     /**
      * Create a new lobby with God as owner.
@@ -75,6 +80,9 @@ public class LobbyService {
         store.saveLobby(lobby);
         store.saveSession(session);
         
+        // Broadcast player list update to all players in lobby
+        broadcastPlayerListUpdate(lobbyId);
+        
         // Build response
         LobbyResponse response = LobbyResponse.fromLobby(lobby, lobby.getPlayers());
         response.setPlayerToken(playerToken);
@@ -93,5 +101,40 @@ public class LobbyService {
         }
         
         return LobbyResponse.fromLobby(lobby, lobby.getPlayers());
+    }
+    
+    /**
+     * Broadcast updated player list to all players in a lobby.
+     */
+    private void broadcastPlayerListUpdate(UUID lobbyId) {
+        Lobby lobby = store.getLobby(lobbyId);
+        if (lobby == null) return;
+        
+        LobbyResponse response = LobbyResponse.fromLobby(lobby, lobby.getPlayers());
+        messagingTemplate.convertAndSend("/topic/lobby/" + lobbyId, Map.of(
+            "type", "PLAYER_LIST_UPDATE",
+            "players", response.getPlayers()
+        ));
+    }
+    
+    /**
+     * Remove player from lobby (on disconnect).
+     */
+    public void removePlayer(UUID lobbyId, UUID playerId) {
+        Lobby lobby = store.getLobby(lobbyId);
+        if (lobby == null) return;
+        
+        // Don't remove God/owner
+        if (playerId.equals(lobby.getOwnerId())) {
+            return;
+        }
+        
+        lobby.getPlayers().removeIf(p -> p.getId().equals(playerId));
+        store.saveLobby(lobby);
+        
+        // Broadcast updated player list
+        broadcastPlayerListUpdate(lobbyId);
+        
+        System.out.println("Player " + playerId + " removed from lobby " + lobbyId);
     }
 }

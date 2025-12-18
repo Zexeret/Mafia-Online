@@ -4,6 +4,7 @@ import { store } from "../store/store";
 import { setConnected, setError } from "../store/slices/websocketSlice";
 import { setRole } from "../store/slices/playerSlice";
 import { setPhase, addAnnouncement } from "../store/slices/gameSlice";
+import { updatePlayers } from "../store/slices/lobbySlice";
 
 /**
  * WebSocket client for STOMP messaging.
@@ -90,6 +91,11 @@ class WebSocketService {
   private handleLobbyMessage(message: IMessage): void {
     const data = JSON.parse(message.body);
     console.log("Lobby message:", data);
+
+    // Handle player list updates
+    if (data.type === "PLAYER_LIST_UPDATE" && data.players) {
+      store.dispatch(updatePlayers(data.players));
+    }
 
     // Handle phase change
     if (data.newPhase) {
