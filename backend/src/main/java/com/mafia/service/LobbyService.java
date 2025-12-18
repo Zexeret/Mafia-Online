@@ -41,8 +41,8 @@ public class LobbyService {
         // Create game state
         GameState gameState = new GameState(lobbyId);
         
-        // Create session
-        PlayerSession session = new PlayerSession(godToken, godId, lobbyId);
+        // Create session with name
+        PlayerSession session = new PlayerSession(godToken, godId, lobbyId, godName);
         
         // Save to store
         store.saveLobby(lobby);
@@ -73,8 +73,8 @@ public class LobbyService {
         Player player = new Player(playerId, playerName);
         lobby.addPlayer(player);
         
-        // Create session
-        PlayerSession session = new PlayerSession(playerToken, playerId, lobbyId);
+        // Create session with name
+        PlayerSession session = new PlayerSession(playerToken, playerId, lobbyId, playerName);
         
         // Save
         store.saveLobby(lobby);
@@ -122,19 +122,56 @@ public class LobbyService {
      */
     public void removePlayer(UUID lobbyId, UUID playerId) {
         Lobby lobby = store.getLobby(lobbyId);
-        if (lobby == null) return;
-        
-        // Don't remove God/owner
-        if (playerId.equals(lobby.getOwnerId())) {
+        if (lobby == null) {
+            System.out.println("Lobby " + lobbyId + " not found, cannot remove player");
             return;
         }
         
-        lobby.getPlayers().removeIf(p -> p.getId().equals(playerId));
+        // Don't remove God/owner
+        if (playerId.equals(lobby.getOwnerId())) {
+            System.out.println("Cannot remove God/owner " + playerId + " from lobby");
+            return;
+        }
+        
+        boolean removed = lobby.getPlayers().removeIf(p -> p.getId().equals(playerId));
+        
+        if (removed) {
+            store.saveLobby(lobby);
+            
+            // Broadcast updated player list
+            broadcastPlayerListUpdate(lobbyId);
+            
+            System.out.println("Player " + playerId + " removed from lobby " + lobbyId);
+        } else {
+            System.out.println("Player " + playerId + " not found in lobby " + lobbyId);
+        }
+    }
+    
+    /**
+     * Re-add player to lobby on reconnect.
+     */
+    public void reconnectPlayer(UUID lobbyId, UUID playerId, String playerName) {
+        Lobby lobby = store.getLobby(lobbyId);
+        if (lobby == null) {
+            System.out.println("Lobby " + lobbyId + " not found, cannot reconnect player");
+            return;
+        }
+        
+        // Check if player already exists
+        Player existingPlayer = lobby.getPlayerById(playerId);
+        if (existingPlayer != null) {
+            System.out.println("Player " + playerId + " already in lobby, no need to reconnect");
+            return;
+        }
+        
+        // Re-add player to lobby
+        Player player = new Player(playerId, playerName);
+        lobby.addPlayer(player);
         store.saveLobby(lobby);
         
-        // Broadcast updated player list
+        // Broadcast player list update
         broadcastPlayerListUpdate(lobbyId);
         
-        System.out.println("Player " + playerId + " removed from lobby " + lobbyId);
+        System.out.println("Player " + playerId + " (" + playerName + ") reconnected to lobby " + lobbyId);
     }
 }

@@ -27,6 +27,12 @@ class WebSocketService {
     this.lobbyId = lobbyId;
     this.playerId = playerId;
 
+    console.log("Creating WebSocket connection...", {
+      playerToken,
+      lobbyId,
+      playerId,
+    });
+
     this.client = new Client({
       webSocketFactory: () => new SockJS("/ws"),
       connectHeaders: {
@@ -41,14 +47,33 @@ class WebSocketService {
     });
 
     this.client.onConnect = () => {
-      console.log("WebSocket connected");
+      console.log("WebSocket connected successfully");
       store.dispatch(setConnected(true));
       this.subscribeToChannels();
     };
 
     this.client.onStompError = (frame) => {
       console.error("STOMP error:", frame);
-      store.dispatch(setError(frame.headers["message"] || "WebSocket error"));
+      const errorMsg =
+        frame.headers["message"] || frame.body || "WebSocket error";
+      store.dispatch(setError(errorMsg));
+
+      // If token is invalid, clear localStorage and redirect
+      if (
+        errorMsg.includes("Invalid playerToken") ||
+        errorMsg.includes("player session not found")
+      ) {
+        console.error("Invalid session detected. Clearing localStorage.");
+        localStorage.removeItem("playerToken");
+        localStorage.removeItem("playerId");
+        localStorage.removeItem("lobbyId");
+        // TODO: Redirect to home page
+      }
+    };
+
+    this.client.onWebSocketError = (error) => {
+      console.error("WebSocket connection error:", error);
+      store.dispatch(setError("Failed to connect to server"));
     };
 
     this.client.onWebSocketClose = () => {

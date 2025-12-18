@@ -68,13 +68,20 @@ export const LobbyWaitingRoom: React.FC = () => {
   const websocket = useAppSelector((state) => state.websocket);
 
   useEffect(() => {
+    // Validate that we have a player token
+    if (!player.playerToken || !player.playerId) {
+      console.error(
+        "No player token found. Player needs to join/create lobby first."
+      );
+      return;
+    }
+
     // Connect to WebSocket when entering lobby
-    if (
-      player.playerToken &&
-      lobbyId &&
-      player.playerId &&
-      !websocket.connected
-    ) {
+    if (lobbyId && !websocket.connected) {
+      console.log(
+        "Attempting to connect WebSocket with token:",
+        player.playerToken
+      );
       websocketService.connect(player.playerToken, lobbyId, player.playerId);
     }
 
@@ -158,7 +165,11 @@ export const LobbyWaitingRoom: React.FC = () => {
             Phase: {game.phase}
           </StyledText>
           {player.role && (
-            <StyledText variant="body" color="success" style={{ marginTop: "8px" }}>
+            <StyledText
+              variant="body"
+              color="success"
+              style={{ marginTop: "8px" }}
+            >
               Your Role: {player.role}
             </StyledText>
           )}

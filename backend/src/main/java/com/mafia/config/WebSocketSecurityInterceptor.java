@@ -34,13 +34,15 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
             String playerToken = accessor.getFirstNativeHeader("playerToken");
             
             if (playerToken == null || playerToken.isEmpty()) {
+                System.err.println("WebSocket CONNECT rejected: Missing playerToken");
                 throw new IllegalArgumentException("Missing playerToken in CONNECT");
             }
             
             // Validate token and get player
             PlayerSession session = store.getSessionByToken(playerToken);
             if (session == null) {
-                throw new IllegalArgumentException("Invalid playerToken");
+                System.err.println("WebSocket CONNECT rejected: Invalid playerToken: " + playerToken);
+                throw new IllegalArgumentException("Invalid playerToken - player session not found. Please rejoin the lobby.");
             }
             
             // Associate WebSocket session with playerId for reconnect support
@@ -48,7 +50,7 @@ public class WebSocketSecurityInterceptor implements ChannelInterceptor {
             session.setWebSocketSessionId(sessionId);
             store.associateWebSocketSession(sessionId, session.getPlayerId());
             
-            System.out.println("WebSocket CONNECT: Player " + session.getPlayerId() + " connected with session " + sessionId);
+            System.out.println("WebSocket CONNECT: Player " + session.getPlayerId() + " (" + session.getPlayerName() + ") connected with session " + sessionId);
         }
         
         if (accessor != null && StompCommand.SUBSCRIBE.equals(accessor.getCommand())) {

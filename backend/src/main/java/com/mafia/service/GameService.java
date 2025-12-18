@@ -27,6 +27,9 @@ public class GameService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
     
+    @Autowired
+    private LobbyService lobbyService;
+    
     /**
      * Assign roles randomly to all players in the lobby.
      * TODO: Support manual role assignment by God.
@@ -116,7 +119,7 @@ public class GameService {
     
     /**
      * Handle player reconnection.
-     * Send current game state to reconnecting player.
+     * Send current game state to reconnecting player and re-add them to lobby if needed.
      */
     public void handleReconnect(String playerToken) {
         PlayerSession session = store.getSessionByToken(playerToken);
@@ -136,7 +139,16 @@ public class GameService {
         }
         
         Player player = lobby.getPlayerById(playerId);
+        
+        // If player is not in lobby (was removed on disconnect), re-add them
+        if (player == null && session.getPlayerName() != null) {
+            lobbyService.reconnectPlayer(lobbyId, playerId, session.getPlayerName());
+            lobby = store.getLobby(lobbyId); // Refresh lobby
+            player = lobby.getPlayerById(playerId);
+        }
+        
         if (player == null) {
+            System.out.println("Player " + playerId + " not found in lobby, cannot reconnect");
             return;
         }
         

@@ -13,7 +13,7 @@ interface LobbyState {
 }
 
 const initialState: LobbyState = {
-  lobbyId: null,
+  lobbyId: localStorage.getItem("lobbyId"),
   ownerId: null,
   players: [],
 };
@@ -36,6 +36,8 @@ const lobbySlice = createSlice({
       state.lobbyId = action.payload.lobbyId;
       state.ownerId = action.payload.ownerId;
       state.players = action.payload.players;
+      // Persist lobbyId for reconnect
+      localStorage.setItem("lobbyId", action.payload.lobbyId);
     },
     updatePlayers: (state, action: PayloadAction<PlayerInfo[]>) => {
       state.players = action.payload;
@@ -44,6 +46,7 @@ const lobbySlice = createSlice({
       state.lobbyId = null;
       state.ownerId = null;
       state.players = [];
+      localStorage.removeItem("lobbyId");
     },
   },
 });

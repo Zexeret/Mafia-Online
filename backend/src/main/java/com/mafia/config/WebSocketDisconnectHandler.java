@@ -26,12 +26,15 @@ public class WebSocketDisconnectHandler {
 
     /**
      * Handle WebSocket disconnect events.
-     * Remove non-God players from lobby when they disconnect.
+     * Mark session as disconnected but DON'T remove player immediately.
+     * Player will be re-added on reconnect via handleReconnect.
      */
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = headerAccessor.getSessionId();
+
+        System.out.println("WebSocket DISCONNECT event for session: " + sessionId);
 
         if (sessionId != null) {
             UUID playerId = store.getPlayerIdByWebSocketSession(sessionId);
@@ -42,7 +45,10 @@ public class WebSocketDisconnectHandler {
                 if (session != null) {
                     UUID lobbyId = session.getLobbyId();
 
-                    // Remove player from lobby (unless they're God/owner)
+                    // Clear the WebSocket session ID but keep the player session
+                    session.setWebSocketSessionId(null);
+
+                    // Remove player from lobby (they'll be re-added on reconnect)
                     lobbyService.removePlayer(lobbyId, playerId);
 
                     // Clean up WebSocket session mapping

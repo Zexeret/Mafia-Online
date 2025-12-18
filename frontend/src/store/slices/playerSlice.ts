@@ -7,8 +7,8 @@ interface PlayerState {
 }
 
 const initialState: PlayerState = {
-  playerId: null,
-  playerToken: null,
+  playerId: localStorage.getItem("playerId"),
+  playerToken: localStorage.getItem("playerToken"),
   role: null,
 };
 
@@ -34,14 +34,6 @@ const playerSlice = createSlice({
     setRole: (state, action: PayloadAction<string>) => {
       state.role = action.payload;
     },
-    loadPlayerFromStorage: (state) => {
-      const token = localStorage.getItem("playerToken");
-      const id = localStorage.getItem("playerId");
-      if (token && id) {
-        state.playerToken = token;
-        state.playerId = id;
-      }
-    },
     clearPlayer: (state) => {
       state.playerId = null;
       state.playerToken = null;
@@ -52,10 +44,5 @@ const playerSlice = createSlice({
   },
 });
 
-export const {
-  setPlayerIdentity,
-  setRole,
-  loadPlayerFromStorage,
-  clearPlayer,
-} = playerSlice.actions;
+export const { setPlayerIdentity, setRole, clearPlayer } = playerSlice.actions;
 export default playerSlice.reducer;
