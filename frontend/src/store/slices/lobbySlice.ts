@@ -4,17 +4,17 @@ interface PlayerInfo {
   id: string;
   name: string;
   alive: boolean;
+  connected: boolean;
+  isGod: boolean;
 }
 
 interface LobbyState {
   lobbyId: string | null;
-  ownerId: string | null;
   players: PlayerInfo[];
 }
 
 const initialState: LobbyState = {
   lobbyId: localStorage.getItem("lobbyId"),
-  ownerId: null,
   players: [],
 };
 
@@ -29,12 +29,10 @@ const lobbySlice = createSlice({
       state,
       action: PayloadAction<{
         lobbyId: string;
-        ownerId: string;
         players: PlayerInfo[];
       }>
     ) => {
       state.lobbyId = action.payload.lobbyId;
-      state.ownerId = action.payload.ownerId;
       state.players = action.payload.players;
       // Persist lobbyId for reconnect
       localStorage.setItem("lobbyId", action.payload.lobbyId);
@@ -44,7 +42,6 @@ const lobbySlice = createSlice({
     },
     clearLobby: (state) => {
       state.lobbyId = null;
-      state.ownerId = null;
       state.players = [];
       localStorage.removeItem("lobbyId");
     },

@@ -9,7 +9,6 @@ import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Controller;
 
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * WebSocket controller for real-time game actions.
@@ -26,7 +25,7 @@ public class GameController {
      * Message sent to /app/game/{lobbyId}/assign-roles
      */
     @MessageMapping("/game/{lobbyId}/assign-roles")
-    public void assignRoles(@DestinationVariable UUID lobbyId, @Payload Map<String, Integer> roleCounts) {
+    public void assignRoles(@DestinationVariable String lobbyId, @Payload Map<String, Integer> roleCounts) {
         // Convert to Role enum map
         Map<Role, Integer> roleMap = Map.of(
             Role.MAFIA, roleCounts.getOrDefault("MAFIA", 0),
@@ -43,20 +42,13 @@ public class GameController {
      * Message sent to /app/game/{lobbyId}/next-phase
      */
     @MessageMapping("/game/{lobbyId}/next-phase")
-    public void nextPhase(@DestinationVariable UUID lobbyId, @Payload Map<String, String> payload) {
+    public void nextPhase(@DestinationVariable String lobbyId, @Payload Map<String, String> payload) {
         String announcement = payload.get("announcement");
         gameService.nextPhase(lobbyId, announcement);
     }
     
-    /**
-     * Player reconnects and requests current state.
-     * Message sent to /app/game/reconnect
-     */
-    @MessageMapping("/game/reconnect")
-    public void reconnect(@Payload Map<String, String> payload) {
-        String playerToken = payload.get("playerToken");
-        gameService.handleReconnect(playerToken);
-    }
+    // Reconnect is now automatic - snapshot sent on WebSocket connect
+    // No manual /app/game/reconnect endpoint needed
     
     // TODO: Add handlers for:
     // - Night actions (Mafia kill, Doctor save, Detective investigate)

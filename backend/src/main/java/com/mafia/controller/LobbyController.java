@@ -51,11 +51,16 @@ public class LobbyController {
     /**
      * Join an existing lobby.
      * Returns playerToken for the joining player.
+     * If playerToken is provided and valid, reconnects existing player.
      */
     @PostMapping("/join")
     public ResponseEntity<LobbyResponse> joinLobby(@RequestBody JoinLobbyRequest request) {
         try {
-            LobbyResponse response = lobbyService.joinLobby(request.getLobbyId(), request.getPlayerName());
+            LobbyResponse response = lobbyService.joinLobby(
+                request.getLobbyId(), 
+                request.getPlayerName(),
+                request.getPlayerToken()
+            );
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -67,7 +72,7 @@ public class LobbyController {
      * Does NOT include player roles.
      */
     @GetMapping("/{lobbyId}")
-    public ResponseEntity<LobbyResponse> getLobbyInfo(@PathVariable UUID lobbyId) {
+    public ResponseEntity<LobbyResponse> getLobbyInfo(@PathVariable String lobbyId) {
         try {
             LobbyResponse response = lobbyService.getLobbyInfo(lobbyId);
             return ResponseEntity.ok(response);

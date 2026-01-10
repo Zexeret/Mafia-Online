@@ -15,8 +15,7 @@ import java.util.UUID;
  */
 @Data
 public class LobbyResponse {
-    private UUID lobbyId;
-    private UUID ownerId;
+    private String lobbyId;
     private String playerToken;  // Returned only on create/join
     private UUID playerId;       // Returned only on create/join
     private List<PlayerInfo> players;
@@ -27,14 +26,19 @@ public class LobbyResponse {
         private UUID id;
         private String name;
         private boolean alive;
+        private boolean connected;  // Connection status for God's dashboard
     }
     
-    public static LobbyResponse fromLobby(Lobby lobby, List<Player> players) {
+    public static LobbyResponse fromLobby(Lobby lobby) {
         LobbyResponse response = new LobbyResponse();
         response.setLobbyId(lobby.getId());
-        response.setOwnerId(lobby.getOwnerId());
-        response.setPlayers(players.stream()
-                .map(p -> new PlayerInfo(p.getId(), p.getName(), p.isAlive()))
+        response.setPlayers(lobby.getPlayers().stream()
+                .map(p -> new PlayerInfo(
+                    p.getId(), 
+                    p.getName(), 
+                    p.isAlive(),
+                    p.getSession().isConnected()
+                ))
                 .toList());
         return response;
     }

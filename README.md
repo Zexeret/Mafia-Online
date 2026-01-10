@@ -34,6 +34,13 @@ Mafia-Online/
 
 ## Getting Started
 
+### Prerequisites
+
+- Java 21+
+- Maven 3.8+
+- Node.js 18+
+- Yarn
+
 ### Backend
 
 ```bash
@@ -47,11 +54,25 @@ Server runs on `http://localhost:8080`
 
 ```bash
 cd frontend
-npm install
-npm run dev
+yarn install
+yarn dev
 ```
 
-Frontend runs on `http://localhost:3000`
+Frontend runs on `http://localhost:5173`
+
+### Running Both
+
+Open two terminals:
+
+```bash
+# Terminal 1 - Backend
+cd backend
+mvn spring-boot:run
+
+# Terminal 2 - Frontend
+cd frontend
+yarn dev
+```
 
 ## Architecture
 

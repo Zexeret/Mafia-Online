@@ -6,6 +6,7 @@ package com.mafia.model.enums;
  * TODO: Add more roles (Detective, Doctor, etc.) as needed.
  */
 public enum Role {
+    GOD,
     MAFIA,
     VILLAGER,
     DOCTOR,

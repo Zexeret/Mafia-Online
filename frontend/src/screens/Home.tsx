@@ -62,12 +62,16 @@ export const Home: React.FC = () => {
     try {
       const response = await lobbyApi.createLobby({ godName });
 
-      // Store lobby and player info in Redux
+      // Set lobby and players from REST response
+      // Connection status will be updated by GAME_SNAPSHOT from WebSocket
       dispatch(
         setLobby({
           lobbyId: response.lobbyId,
-          ownerId: response.ownerId,
-          players: response.players,
+          players: response.players.map((p) => ({
+            ...p,
+            connected: p.connected ?? false,
+            isGod: p.id === response.playerId,
+          })),
         })
       );
 
@@ -96,16 +100,25 @@ export const Home: React.FC = () => {
     setError("");
 
     try {
+      // Include existing playerToken if available (for reconnection)
+      const existingToken = localStorage.getItem("playerToken");
+
       const response = await lobbyApi.joinLobby({
         lobbyId: lobbyIdInput,
         playerName,
+        playerToken: existingToken || undefined,
       });
 
+      // Set lobby and players from REST response
+      // Connection status will be updated by GAME_SNAPSHOT from WebSocket
       dispatch(
         setLobby({
           lobbyId: response.lobbyId,
-          ownerId: response.ownerId,
-          players: response.players,
+          players: response.players.map((p) => ({
+            ...p,
+            connected: p.connected ?? false,
+            isGod: false, // Will be updated from GAME_SNAPSHOT
+          })),
         })
       );
 

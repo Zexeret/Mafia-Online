@@ -5,12 +5,13 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 /**
- * Broadcast message for phase changes.
- * Sent via /topic/lobby/{lobbyId}
+ * Data payload for PHASE_CHANGE message.
+ * Broadcast to all players when game phase changes.
+ * Wrapped in WebSocketMessage envelope.
  */
 @Getter
 @AllArgsConstructor
-public class PhaseChangeMessage {
+public class PhaseChangeData {
     private GamePhase newPhase;
     private int dayCount;
     private String announcement;

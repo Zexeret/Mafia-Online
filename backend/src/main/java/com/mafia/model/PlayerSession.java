@@ -2,30 +2,19 @@ package com.mafia.model;
 
 import lombok.Data;
 
-import java.util.UUID;
-
 /**
- * Represents a player's session for reconnect support.
- * Maps playerToken to playerId and tracks WebSocket session.
+ * Represents a player's session/connection info.
+ * Embedded within Player - handles auth and connection state.
  */
 @Data
 public class PlayerSession {
-    private String playerToken;      // UUID stored client-side
-    private UUID playerId;
-    private UUID lobbyId;
-    private String playerName;       // Store name for reconnect
-    private String webSocketSessionId;  // Current WebSocket session (changes on reconnect)
+    private String playerToken;           // Secret token for authentication
+    private boolean connected;            // Current connection status
+    private String webSocketSessionId;    // Current WebSocket session ID
     
-    public PlayerSession(String playerToken, UUID playerId, UUID lobbyId) {
+    public PlayerSession(String playerToken) {
         this.playerToken = playerToken;
-        this.playerId = playerId;
-        this.lobbyId = lobbyId;
-    }
-    
-    public PlayerSession(String playerToken, UUID playerId, UUID lobbyId, String playerName) {
-        this.playerToken = playerToken;
-        this.playerId = playerId;
-        this.lobbyId = lobbyId;
-        this.playerName = playerName;
+        this.connected = false;           // Not connected until WebSocket connects
+        this.webSocketSessionId = null;
     }
 }

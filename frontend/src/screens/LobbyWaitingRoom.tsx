@@ -56,9 +56,18 @@ const StatusDot = styled.div<{ connected: boolean }>`
     connected ? theme.colors.success : theme.colors.danger};
 `;
 
+const PlayerStatusDot = styled.div<{ connected: boolean }>`
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: ${({ theme, connected }) =>
+    connected ? theme.colors.success : theme.colors.danger};
+`;
+
 /**
  * Lobby waiting room screen.
- * TODO: Add God controls for role assignment and game start.
+ * Shows player list with connection status.
+ * God controls are shown based on role (not ownerId).
  */
 export const LobbyWaitingRoom: React.FC = () => {
   const { lobbyId } = useParams<{ lobbyId: string }>();
@@ -67,9 +76,13 @@ export const LobbyWaitingRoom: React.FC = () => {
   const game = useAppSelector((state) => state.game);
   const websocket = useAppSelector((state) => state.websocket);
 
+  // Check if current player is God (role-based)
+  const isGod = player.role === "GOD";
+
+  // Connect WebSocket on mount
   useEffect(() => {
     // Validate that we have a player token
-    if (!player.playerToken || !player.playerId) {
+    if (!player.playerToken || !player.playerId || !lobbyId) {
       console.error(
         "No player token found. Player needs to join/create lobby first."
       );
@@ -77,7 +90,7 @@ export const LobbyWaitingRoom: React.FC = () => {
     }
 
     // Connect to WebSocket when entering lobby
-    if (lobbyId && !websocket.connected) {
+    if (!websocketService.isConnected()) {
       console.log(
         "Attempting to connect WebSocket with token:",
         player.playerToken
@@ -85,12 +98,15 @@ export const LobbyWaitingRoom: React.FC = () => {
       websocketService.connect(player.playerToken, lobbyId, player.playerId);
     }
 
+    // Disconnect WebSocket when leaving the lobby page (back button, etc.)
     return () => {
-      // Keep connection alive on unmount (for reconnect)
+      // TODO: fix Lobby status show disconnected
+      // TODO: fix on join lobby logic, the player should detail should be update only if he
+      // trying to join back his last lobby, on new lobby, create new player detail
+      console.log("LobbyWaitingRoom unmounting - disconnecting WebSocket");
+      websocketService.disconnect();
     };
-  }, [player.playerToken, lobbyId, player.playerId, websocket.connected]);
-
-  const isGod = player.playerId === lobby.ownerId;
+  }, [player.playerToken, lobbyId, player.playerId]);
 
   return (
     <Container>
@@ -135,19 +151,44 @@ export const LobbyWaitingRoom: React.FC = () => {
           <PlayerList>
             {lobby.players.map((p) => (
               <PlayerCard key={p.id}>
-                <StyledText variant="body" weight="medium">
-                  {p.name}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                  }}
+                >
+                  <PlayerStatusDot connected={p.connected} />
+                  <StyledText variant="body" weight="medium">
+                    {p.name}
+                  </StyledText>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "4px",
+                    justifyContent: "center",
+                    marginTop: "4px",
+                  }}
+                >
+                  {p.isGod && (
+                    <StyledText variant="caption" color="secondary">
+                      (God)
+                    </StyledText>
+                  )}
+                  {p.id === player.playerId && (
+                    <StyledText variant="caption" color="primary">
+                      (You)
+                    </StyledText>
+                  )}
+                </div>
+                <StyledText
+                  variant="caption"
+                  color={p.connected ? "success" : "danger"}
+                >
+                  {p.connected ? "Online" : "Offline"}
                 </StyledText>
-                {p.id === lobby.ownerId && (
-                  <StyledText variant="caption" color="secondary">
-                    (God)
-                  </StyledText>
-                )}
-                {p.id === player.playerId && (
-                  <StyledText variant="caption" color="primary">
-                    (You)
-                  </StyledText>
-                )}
               </PlayerCard>
             ))}
           </PlayerList>

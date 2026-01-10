@@ -5,20 +5,18 @@ import lombok.Data;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Represents the current state of an active game.
+ * Embedded within Lobby
  */
 @Data
 public class GameState {
-    private UUID lobbyId;
     private GamePhase phase;
     private int dayCount;
     private List<String> announcements;  // God announcements visible to all
     
-    public GameState(UUID lobbyId) {
-        this.lobbyId = lobbyId;
+    public GameState() {
         this.phase = GamePhase.WAITING;
         this.dayCount = 0;
         this.announcements = new ArrayList<>();

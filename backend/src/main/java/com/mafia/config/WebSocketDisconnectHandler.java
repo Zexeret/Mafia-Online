@@ -1,6 +1,6 @@
 package com.mafia.config;
 
-import com.mafia.model.PlayerSession;
+import com.mafia.model.Player;
 import com.mafia.service.LobbyService;
 import com.mafia.store.InMemoryStore;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +13,7 @@ import java.util.UUID;
 
 /**
  * Handles WebSocket disconnect events.
- * Separated from WebSocketSecurityInterceptor to avoid circular dependency.
+ * Marks players as disconnected instead of removing them.
  */
 @Component
 public class WebSocketDisconnectHandler {
@@ -26,36 +26,31 @@ public class WebSocketDisconnectHandler {
 
     /**
      * Handle WebSocket disconnect events.
-     * Mark session as disconnected but DON'T remove player immediately.
-     * Player will be re-added on reconnect via handleReconnect.
+     * Mark player as disconnected (don't remove them).
+     * Player can reconnect later and resume their session.
      */
     @EventListener
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        String sessionId = headerAccessor.getSessionId();
+        String wsSessionId = headerAccessor.getSessionId();
 
-        System.out.println("WebSocket DISCONNECT event for session: " + sessionId);
+        System.out.println("WebSocket DISCONNECT event for session: " + wsSessionId);
 
-        if (sessionId != null) {
-            UUID playerId = store.getPlayerIdByWebSocketSession(sessionId);
+        if (wsSessionId != null) {
+            // Find player by WebSocket session
+            Player player = store.getPlayerByWebSocketSession(wsSessionId);
+            String lobbyId = store.getLobbyIdByWebSocketSession(wsSessionId);
 
-            if (playerId != null) {
-                PlayerSession session = store.getSessionByPlayerId(playerId);
+            if (player != null && lobbyId != null) {
+                // Mark player as disconnected (don't remove!)
+                lobbyService.markPlayerDisconnected(lobbyId, player);
+                
+                // Clean up WebSocket session mapping
+                store.removeWebSocketSession(wsSessionId);
 
-                if (session != null) {
-                    UUID lobbyId = session.getLobbyId();
-
-                    // Clear the WebSocket session ID but keep the player session
-                    session.setWebSocketSessionId(null);
-
-                    // Remove player from lobby (they'll be re-added on reconnect)
-                    lobbyService.removePlayer(lobbyId, playerId);
-
-                    // Clean up WebSocket session mapping
-                    store.removeWebSocketSession(sessionId);
-
-                    System.out.println("WebSocket DISCONNECT: Player " + playerId + " disconnected from session " + sessionId);
-                }
+                System.out.println("WebSocket DISCONNECT: Player " + player.getId() + " (" + player.getName() + ") marked as disconnected");
+            } else {
+                System.out.println("WebSocket DISCONNECT: No player found for session " + wsSessionId);
             }
         }
     }

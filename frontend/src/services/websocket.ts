@@ -5,10 +5,20 @@ import { setConnected, setError } from "../store/slices/websocketSlice";
 import { setRole } from "../store/slices/playerSlice";
 import { setPhase, addAnnouncement } from "../store/slices/gameSlice";
 import { updatePlayers } from "../store/slices/lobbySlice";
+import {
+  WebSocketMessage,
+  isPlayerListUpdate,
+  isPhaseChange,
+  isGameSnapshot,
+  isRoleAssigned,
+} from "../types";
 
 /**
  * WebSocket client for STOMP messaging.
  * Handles connection, subscriptions, and message routing.
+ *
+ * All messages follow envelope format: { type: MessageType, data: {...} }
+ * Game snapshot is automatically sent by backend on connect.
  */
 class WebSocketService {
   private client: Client | null = null;
@@ -50,6 +60,7 @@ class WebSocketService {
       console.log("WebSocket connected successfully");
       store.dispatch(setConnected(true));
       this.subscribeToChannels();
+      // No manual reconnect request needed - backend auto-sends GAME_SNAPSHOT
     };
 
     this.client.onStompError = (frame) => {
@@ -58,16 +69,21 @@ class WebSocketService {
         frame.headers["message"] || frame.body || "WebSocket error";
       store.dispatch(setError(errorMsg));
 
-      // If token is invalid, clear localStorage and redirect
+      // If token is invalid, clear localStorage and redirect to home
       if (
         errorMsg.includes("Invalid playerToken") ||
+        errorMsg.includes("player not found") ||
         errorMsg.includes("player session not found")
       ) {
-        console.error("Invalid session detected. Clearing localStorage.");
+        console.error(
+          "Invalid session detected. Clearing localStorage and redirecting."
+        );
         localStorage.removeItem("playerToken");
         localStorage.removeItem("playerId");
         localStorage.removeItem("lobbyId");
-        // TODO: Redirect to home page
+        // Disconnect and redirect to home
+        this.client?.deactivate();
+        window.location.href = "/";
       }
     };
 
@@ -90,96 +106,94 @@ class WebSocketService {
   private subscribeToChannels(): void {
     if (!this.client?.connected || !this.lobbyId || !this.playerId) return;
 
-    // Subscribe to lobby broadcasts
+    // Subscribe to lobby broadcasts (PLAYER_LIST_UPDATE, PHASE_CHANGE)
     this.client.subscribe(
       `/topic/lobby/${this.lobbyId}`,
       (message: IMessage) => {
-        this.handleLobbyMessage(message);
+        this.handleMessage(message, "lobby");
       }
     );
 
-    // Subscribe to private player messages
+    // Subscribe to private player messages (GAME_SNAPSHOT, ROLE_ASSIGNED)
     this.client.subscribe(
       `/queue/player/${this.playerId}`,
       (message: IMessage) => {
-        this.handlePlayerMessage(message);
+        this.handleMessage(message, "player");
       }
     );
-
-    // Request reconnect state
-    this.sendReconnectRequest();
   }
 
   /**
-   * Handle lobby broadcast messages.
+   * Handle incoming WebSocket message with typed envelope.
    */
-  private handleLobbyMessage(message: IMessage): void {
-    const data = JSON.parse(message.body);
-    console.log("Lobby message:", data);
+  private handleMessage(message: IMessage, source: "lobby" | "player"): void {
+    try {
+      const wsMessage = JSON.parse(message.body) as WebSocketMessage;
+      console.log(`[${source}] Received:`, wsMessage.type, wsMessage.data);
 
-    // Handle player list updates
-    if (data.type === "PLAYER_LIST_UPDATE" && data.players) {
-      store.dispatch(updatePlayers(data.players));
-    }
-
-    // Handle phase change
-    if (data.newPhase) {
-      store.dispatch(
-        setPhase({
-          phase: data.newPhase,
-          dayCount: data.dayCount,
-          announcement: data.announcement,
-        })
-      );
-    }
-  }
-
-  /**
-   * Handle private player messages.
-   */
-  private handlePlayerMessage(message: IMessage): void {
-    const data = JSON.parse(message.body);
-    console.log("Player message:", data);
-
-    // Handle role assignment
-    if (data.role) {
-      store.dispatch(setRole(data.role));
-      if (data.message) {
-        store.dispatch(addAnnouncement(data.message));
+      // Use type guards for type-safe message handling
+      if (isPlayerListUpdate(wsMessage)) {
+        store.dispatch(updatePlayers(wsMessage.data.players));
+        return;
       }
-    }
 
-    // Handle reconnect state
-    if (data.currentPhase) {
-      store.dispatch(setRole(data.yourRole));
-      store.dispatch(
-        setPhase({
-          phase: data.currentPhase,
-          dayCount: data.dayCount,
-        })
-      );
-      if (data.recentAnnouncements) {
-        data.recentAnnouncements.forEach((announcement: string) => {
-          store.dispatch(addAnnouncement(announcement));
-        });
+      if (isPhaseChange(wsMessage)) {
+        store.dispatch(
+          setPhase({
+            phase: wsMessage.data.newPhase,
+            dayCount: wsMessage.data.dayCount,
+            announcement: wsMessage.data.announcement,
+          })
+        );
+        return;
       }
+
+      if (isGameSnapshot(wsMessage)) {
+        const { data } = wsMessage;
+
+        // Update lobby state with full player list
+        store.dispatch(updatePlayers(data.players));
+
+        // Update player's role
+        if (data.yourRole) {
+          store.dispatch(setRole(data.yourRole));
+        }
+
+        // Update game phase
+        store.dispatch(
+          setPhase({
+            phase: data.currentPhase,
+            dayCount: data.dayCount,
+          })
+        );
+
+        // Add announcements
+        if (data.announcements) {
+          data.announcements.forEach((announcement) => {
+            store.dispatch(addAnnouncement(announcement));
+          });
+        }
+        return;
+      }
+
+      if (isRoleAssigned(wsMessage)) {
+        store.dispatch(setRole(wsMessage.data.role));
+        if (wsMessage.data.message) {
+          store.dispatch(addAnnouncement(wsMessage.data.message));
+        }
+        return;
+      }
+
+      console.warn("Unknown message type:", wsMessage);
+    } catch (error) {
+      console.error("Failed to parse WebSocket message:", error, message.body);
     }
-  }
-
-  /**
-   * Send reconnect request to get current game state.
-   */
-  private sendReconnectRequest(): void {
-    const playerToken = store.getState().player.playerToken;
-    if (!playerToken) return;
-
-    this.send("/app/game/reconnect", { playerToken });
   }
 
   /**
    * Send a message to the server.
    */
-  send(destination: string, body: any): void {
+  send(destination: string, body: unknown): void {
     if (!this.client?.connected) {
       console.error("WebSocket not connected");
       return;

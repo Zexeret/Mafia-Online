@@ -7,12 +7,13 @@ import lombok.Getter;
 import java.util.UUID;
 
 /**
- * Private message sent to a player with their role assignment.
- * Sent via /queue/player/{playerId}
+ * Data payload for ROLE_ASSIGNED message.
+ * Private message sent to a player with their role.
+ * Wrapped in WebSocketMessage envelope.
  */
 @Getter
 @AllArgsConstructor
-public class RoleAssignmentMessage {
+public class RoleAssignedData {
     private UUID playerId;
     private Role role;
     private String message;

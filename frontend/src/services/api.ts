@@ -19,18 +19,21 @@ export interface CreateLobbyRequest {
 export interface JoinLobbyRequest {
   lobbyId: string;
   playerName: string;
+  playerToken?: string; // Optional: for reconnecting existing player
+}
+
+export interface PlayerInfo {
+  id: string;
+  name: string;
+  alive: boolean;
+  connected: boolean;
 }
 
 export interface LobbyResponse {
   lobbyId: string;
-  ownerId: string;
   playerToken?: string;
   playerId?: string;
-  players: Array<{
-    id: string;
-    name: string;
-    alive: boolean;
-  }>;
+  players: PlayerInfo[];
 }
 
 /**
